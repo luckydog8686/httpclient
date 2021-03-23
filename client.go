@@ -2,8 +2,6 @@ package httpclient
 
 import (
 	"errors"
-	"github.com/luckydog8686/logs"
-	"golang.org/x/xerrors"
 	"net/http"
 	"reflect"
 )
