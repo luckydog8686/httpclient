@@ -1,11 +1,16 @@
 package httpclient
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/luckydog8686/logs"
+	"io/ioutil"
 	"net/http"
 	"reflect"
 )
-
+/*
 func NewHttpClient(addr string, outs []interface{}, requestHeader http.Header) error {
 	for _,v := range outs{
 		vtype := reflect.TypeOf(v)
@@ -22,11 +27,110 @@ func NewHttpClient(addr string, outs []interface{}, requestHeader http.Header) e
 		}
 	}
 }
-
-func makeFunc(f reflect.StructField)(reflect.Value, error)  {
+*/
+func MakeFunc(f reflect.StructField)(reflect.Value, error)  {
 	ftyp := f.Type
 	if ftyp.Kind() != reflect.Func {
 		return reflect.Value{}, errors.New("handler field not a func")
 	}
+
 	return reflect.Value{},nil
+}
+
+func Struct2Client(sc interface{})error  {
+	scTyp := reflect.TypeOf(sc)
+	if scTyp.Kind() != reflect.Ptr {
+		return errors.New("expected handler to be a pointer")
+	}
+	typ := scTyp.Elem()
+	if typ.Kind() != reflect.Struct {
+		return errors.New("handler should be a struct")
+	}
+
+	vm := reflect.ValueOf(sc).Elem()
+	for i:=0;i<typ.NumField();i++{
+		fn,err:=MakeHttpPost(typ.Field(i))
+		if err != nil {
+			return err
+		}
+		vm.Field(i).Set(fn)
+	}
+	return nil
+}
+
+
+
+func MakeHttpPost(f reflect.StructField) (reflect.Value,error) {
+	ftyp := f.Type
+	if ftyp.Kind() != reflect.Func {
+		return reflect.Value{}, errors.New("handler field not a func")
+	}
+	type Result struct {
+		Data  interface{} `json:"data"`
+		Error interface{} `json:"error"`
+	}
+	DoPost:=func (args []reflect.Value)[]reflect.Value  {
+		var nilError = reflect.Zero(reflect.TypeOf((*error)(nil)).Elem())
+		logs.Info("参数数量:",len(args))
+		url := "http://localhost/ss/ping"
+		var httpBody []byte
+		logs.Info(args[0].Interface())
+		out1:=reflect.New(ftyp.Out(0))
+		httpBody,err := json.Marshal(args[0].Interface())
+		logs.Info(string(httpBody))
+		if err != nil {
+			logs.Error(err)
+			return []reflect.Value{out1,reflect.ValueOf(nilError)}
+		}
+		req,err := http.NewRequest("POST",url,bytes.NewBuffer(httpBody))
+		req.Header.Set("Content-Type", "application/json")
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if resp != nil{
+			defer resp.Body.Close()
+		}
+		if err != nil{
+			logs.Error(err)
+			return []reflect.Value{out1.Elem(),nilError}
+		}
+		body, err:= ioutil.ReadAll(resp.Body)
+		if err != nil{
+			logs.Error(err)
+			return []reflect.Value{out1.Elem(),nilError}
+		}
+		//outE := out1.Interface()
+		res := &Result{}
+		logs.Info(string(body))
+		err = json.Unmarshal(body,res)
+		if err != nil{
+			logs.Error(err)
+			return []reflect.Value{out1.Elem(),nilError}
+		}
+		logs.Info(res)
+		logs.Info(res.Data)
+		logs.Info(res.Error)
+		return []reflect.Value{reflect.ValueOf(res.Data),reflect.ValueOf(errors.New(fmt.Sprintf("%v",res.Data)))}
+		/*
+			var payload []byte
+			if len(args)>0{
+				payload,err := json.Marshal(args[0].Interface())，
+				if err != nil{
+					return
+				}
+			}
+		*/
+	}
+	return reflect.MakeFunc(ftyp,DoPost),nil
+}
+
+type Response struct {
+	Error error `json:"error"`
+	Data json.RawMessage `json:"data"`
+}
+//参数包含请求的数据结构
+//
+
+
+func processError(err error)[]reflect.Value  {
+	return nil
 }
