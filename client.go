@@ -71,7 +71,7 @@ func MakeHttpPost(f reflect.StructField) (reflect.Value,error) {
 	DoPost:=func (args []reflect.Value)[]reflect.Value  {
 		var nilError = reflect.Zero(reflect.TypeOf((*error)(nil)).Elem())
 		logs.Info("参数数量:",len(args))
-		url := "http://localhost/ss/ping"
+		url := "http://localhost/ss/hello"
 		var httpBody []byte
 		logs.Info(args[0].Interface())
 		out1:=reflect.New(ftyp.Out(0))
