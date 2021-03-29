@@ -1,6 +1,8 @@
 package httpclient
 
 import (
+	"github.com/luckydog8686/logs"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -35,6 +37,8 @@ func TestMakeFunc(t *testing.T) {
 	Struct2Client(&ss.Internal)
 	time.Sleep(time.Second)
 	res,err := ss.Ping("haha")
+	logs.Info(reflect.TypeOf(err))
+	logs.Info(reflect.TypeOf(nil))
 	if err != nil{
 		t.Fatal(err)
 	}

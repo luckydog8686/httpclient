@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/luckydog8686/logs"
 	"io/ioutil"
 	"net/http"
@@ -67,7 +66,7 @@ func MakeHttpPost(f reflect.StructField) (reflect.Value,error) {
 	}
 	type Result struct {
 		Data  interface{} `json:"data"`
-		Error interface{} `json:"error"`
+		Error string `json:"error"`
 	}
 	DoPost:=func (args []reflect.Value)[]reflect.Value  {
 		var nilError = reflect.Zero(reflect.TypeOf((*error)(nil)).Elem())
@@ -80,7 +79,7 @@ func MakeHttpPost(f reflect.StructField) (reflect.Value,error) {
 		logs.Info(string(httpBody))
 		if err != nil {
 			logs.Error(err)
-			return []reflect.Value{out1,reflect.ValueOf(nilError)}
+			return []reflect.Value{out1,reflect.ValueOf(err)}
 		}
 		req,err := http.NewRequest("POST",url,bytes.NewBuffer(httpBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -91,12 +90,12 @@ func MakeHttpPost(f reflect.StructField) (reflect.Value,error) {
 		}
 		if err != nil{
 			logs.Error(err)
-			return []reflect.Value{out1.Elem(),nilError}
+			return []reflect.Value{out1.Elem(),reflect.ValueOf(err)}
 		}
 		body, err:= ioutil.ReadAll(resp.Body)
 		if err != nil{
 			logs.Error(err)
-			return []reflect.Value{out1.Elem(),nilError}
+			return []reflect.Value{out1.Elem(),reflect.ValueOf(err)}
 		}
 		//outE := out1.Interface()
 		res := &Result{}
@@ -104,12 +103,20 @@ func MakeHttpPost(f reflect.StructField) (reflect.Value,error) {
 		err = json.Unmarshal(body,res)
 		if err != nil{
 			logs.Error(err)
-			return []reflect.Value{out1.Elem(),nilError}
+			return []reflect.Value{out1.Elem(),reflect.ValueOf(err)}
 		}
 		logs.Info(res)
 		logs.Info(res.Data)
 		logs.Info(res.Error)
-		return []reflect.Value{reflect.ValueOf(res.Data),reflect.ValueOf(errors.New(fmt.Sprintf("%v",res.Data)))}
+		logs.Info(reflect.TypeOf(res.Error))
+		//errMsg := fmt.Sprintf("%v",res.Error)
+
+		if res.Error==""{
+			logs.Info("等于nil")
+			return []reflect.Value{reflect.ValueOf(res.Data),nilError}
+		}
+		logs.Info("不等于nil")
+		return []reflect.Value{reflect.ValueOf(res.Data),reflect.ValueOf(errors.New(res.Error))}
 		/*
 			var payload []byte
 			if len(args)>0{
